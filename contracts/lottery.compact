@@ -2,27 +2,31 @@ pragma language_version >= 0.16 && <= 0.17;
 
 import CompactStandardLibrary;
 
-// Public ledger state - visible on blockchain
-export ledger bettedNumbers: Map<Uint<32>, Uint<32>>; // First is the number 1..100, second is the amount of users that pay for the number
-export ledger winnerNumber: Uint<32>; // oracle can update the number 
-export ledger hashes: Set<Bytes<64>>; // list of privateKey++betNumber hashed
+export ledger bettedNumbers: Map<Uint<32>, Uint<32>>; // (Number -> Amount of bets)
+export ledger winnerNumber: Uint<32>; // (Number)
+export ledger bets: Set<Bytes<32>>; // (<Address + Number> Hash)
+export ledger owner: ZswapCoinPublicKey;
 
 
-export circuit updateWinnerNumber(newWinnerNumber: Uint<32>): [] {
-    winnerNumber = disclose(newWinnerNumber);
+constructor() {
+    owner = ownPublicKey();
 }
 
-export circuit appendHash(userHash: Bytes<64>): [] {
-    hashes.insert(disclose(userHash));
-}
-
-export circuit placeBet(number: Uint<32>): [] {
+export circuit placeBet(number: Uint<32>, payment: CoinInfo): [] {
     const disclosedNumber = disclose(number);
-
+    const disclosedPayment = disclose(payment);
+    receive(disclosedPayment);
     if (bettedNumbers.member(disclosedNumber)) {
         const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
         bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-    } else {
+    }
+    else {
         bettedNumbers.insert(disclosedNumber, 1);
     }
+}
+
+export circuit setWinner(number: Uint<32>): [] {
+    const pk = ownPublicKey();
+    assert(owner == pk, "Only owner can set the winner");
+    winnerNumber = disclose(number);
 }
