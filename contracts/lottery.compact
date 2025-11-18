@@ -17,7 +17,7 @@ constructor() {
     winnerNumber = 0;
 }
 
-export circuit placeBet(number: Uint<32>, tokens: CoinInfo): [] {
+export circuit placeBet(number: Uint<32>, tokens: CoinInfo, secretKey: Bytes<32>): [] {
     assert (winnerNumber == 0, "Lottery has already ended");
     const pk = ownPublicKey();
     const disclosedNumber = disclose(number);
@@ -33,10 +33,10 @@ export circuit placeBet(number: Uint<32>, tokens: CoinInfo): [] {
     if (bettedNumbers.member(disclosedNumber)) {
         const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
         bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-        bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+        bets.insert(betEntry(disclose(secretKey), disclosedNumber));
     } else {
         bettedNumbers.insert(disclosedNumber, 1);
-        bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+        bets.insert(betEntry(disclose(secretKey), disclosedNumber));
       }
 }
 
