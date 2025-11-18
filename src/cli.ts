@@ -1,5 +1,8 @@
 import { Transaction } from "@midnight-ntwrk/ledger";
-import { findDeployedContract } from "@midnight-ntwrk/midnight-js-contracts";
+import {
+  findDeployedContract,
+  FoundContract,
+} from "@midnight-ntwrk/midnight-js-contracts";
 import {
   getLedgerNetworkId,
   getZswapNetworkId,
@@ -15,6 +18,12 @@ import * as path from "path";
 import * as readline from "readline/promises";
 import * as Rx from "rxjs";
 import { WebSocket } from "ws";
+import {
+  claimThePrize,
+  getWinnerNumber,
+  placeABet,
+  setWinnerNumber,
+} from "./operations.js";
 import { MidnightProviders } from "./providers/midnight-providers.js";
 import { EnvironmentManager } from "./utils/environment.js";
 
@@ -31,7 +40,7 @@ async function main() {
     output: process.stdout,
   });
 
-  console.log("🌙 lottery CLI\n");
+  console.log("🌙 Lottery CLI\n");
 
   try {
     // Validate environment
@@ -54,7 +63,7 @@ async function main() {
     console.log("Connecting to Midnight network...");
 
     // Build wallet
-    const wallet = await WalletBuilder.buildFromSeed(
+    const wallet = await WalletBuilder.build(
       networkConfig.indexer,
       networkConfig.indexerWS,
       networkConfig.proofServer,
@@ -65,7 +74,6 @@ async function main() {
     );
 
     wallet.start();
-
     // Wait for sync
     await Rx.firstValueFrom(
       wallet.state().pipe(Rx.filter((s) => s.syncProgress?.synced === true))
@@ -80,8 +88,9 @@ async function main() {
       "contract",
       "index.cjs"
     );
-    const HelloWorldModule = await import(contractModulePath);
-    const contractInstance = new HelloWorldModule.Contract({});
+
+    const Lottery = await import(contractModulePath);
+    const contractInstance = new Lottery.Contract({});
 
     // Create wallet provider
     const walletState = await Rx.firstValueFrom(wallet.state());
@@ -120,7 +129,7 @@ async function main() {
     });
 
     // Connect to contract
-    const deployed: any = await findDeployedContract(providers, {
+    const deployed: FoundContract<any> = await findDeployedContract(providers, {
       contractAddress: deployment.contractAddress,
       contract: contractInstance,
       privateStateId: "helloWorldState",
@@ -129,56 +138,37 @@ async function main() {
 
     console.log("✅ Connected to contract\n");
 
-    // Main menu loop
     let running = true;
     while (running) {
       console.log("--- Menu ---");
       console.log("1. Set winner number (admin only)");
       console.log("2. Read winner number");
-      console.log("3. Exit");
+      console.log("3. Place a bet");
+      console.log("4. Claim the prize");
+      console.log("5. Exit");
 
       const choice = await rl.question("\nYour choice: ");
 
       switch (choice) {
         case "1":
-          console.log("\nStoring custom message...");
-          const customMessage = await rl.question("Enter your message: ");
-          try {
-            const tx = await deployed.callTx.storeMessage(customMessage);
-            console.log("✅ Success!");
-            console.log(`Message: "${customMessage}"`);
-            console.log(`Transaction ID: ${tx.public.txId}`);
-            console.log(`Block height: ${tx.public.blockHeight}\n`);
-          } catch (error) {
-            console.error("❌ Failed to store message:", error);
-          }
+          await setWinnerNumber(rl, deployed);
           break;
-
         case "2":
-          console.log("\nReading message from blockchain...");
-          try {
-            const state = await providers.publicDataProvider.queryContractState(
-              deployment.contractAddress
-            );
-            if (state) {
-              const ledger = HelloWorldModule.ledger(state.data);
-              const message = Buffer.from(ledger.message).toString();
-              console.log(`📋 Current message: "${message}"\n`);
-            } else {
-              console.log("📋 No message found\n");
-            }
-          } catch (error) {
-            console.error("❌ Failed to read message:", error);
-          }
+          await getWinnerNumber(providers, deployment, Lottery);
           break;
-
         case "3":
+          await placeABet(rl, deployed);
+          break;
+        case "4":
+          await claimThePrize(deployed);
+          break;
+        case "5":
           running = false;
           console.log("\n👋 Goodbye!");
           break;
 
         default:
-          console.log("❌ Invalid choice. Please enter 1, 2, or 3.\n");
+          console.log("❌ Invalid choice. Please enter 1, 2, 3, 4, or 5.\n");
       }
     }
 

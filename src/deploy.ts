@@ -1,25 +1,21 @@
-import "dotenv/config";
-import { WalletBuilder } from "@midnight-ntwrk/wallet";
+import { nativeToken, Transaction } from "@midnight-ntwrk/ledger";
 import { deployContract } from "@midnight-ntwrk/midnight-js-contracts";
-import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
-import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
-import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import {
+  getLedgerNetworkId,
+  getZswapNetworkId,
   NetworkId,
   setNetworkId,
-  getZswapNetworkId,
-  getLedgerNetworkId,
 } from "@midnight-ntwrk/midnight-js-network-id";
 import { createBalancedTx } from "@midnight-ntwrk/midnight-js-types";
-import { nativeToken, Transaction } from "@midnight-ntwrk/ledger";
+import { WalletBuilder } from "@midnight-ntwrk/wallet";
+import { type Wallet } from "@midnight-ntwrk/wallet-api";
 import { Transaction as ZswapTransaction } from "@midnight-ntwrk/zswap";
-import { WebSocket } from "ws";
+import chalk from "chalk";
+import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
 import * as Rx from "rxjs";
-import { type Wallet } from "@midnight-ntwrk/wallet-api";
-import chalk from "chalk";
+import { WebSocket } from "ws";
 import { MidnightProviders } from "./providers/midnight-providers.js";
 import { EnvironmentManager } from "./utils/environment.js";
 
@@ -93,31 +89,60 @@ async function main() {
     if (balance === 0n) {
       console.log(chalk.yellow.bold("💰 Balance: ") + chalk.red.bold("0 DUST"));
       console.log();
-      console.log(chalk.red.bold("❌ Wallet needs funding to deploy contracts."));
+      console.log(
+        chalk.red.bold("❌ Wallet needs funding to deploy contracts.")
+      );
       console.log();
       console.log(chalk.magenta.bold("━".repeat(60)));
       console.log(chalk.magenta.bold("📝 How to Get Test Tokens:"));
       console.log(chalk.magenta.bold("━".repeat(60)));
       console.log();
-      console.log(chalk.white("   1. ") + chalk.cyan("Visit: ") + chalk.underline("https://midnight.network/test-faucet"));
-      console.log(chalk.white("   2. ") + chalk.cyan("Paste your wallet address (shown above)"));
-      console.log(chalk.white("   3. ") + chalk.cyan("Request tokens from the faucet"));
+      console.log(
+        chalk.white("   1. ") +
+          chalk.cyan("Visit: ") +
+          chalk.underline("https://midnight.network/test-faucet")
+      );
+      console.log(
+        chalk.white("   2. ") +
+          chalk.cyan("Paste your wallet address (shown above)")
+      );
+      console.log(
+        chalk.white("   3. ") + chalk.cyan("Request tokens from the faucet")
+      );
       console.log();
       console.log(chalk.gray("━".repeat(60)));
-      console.log(chalk.gray("⏱️  Faucet transactions can take 2-5 minutes to process."));
+      console.log(
+        chalk.gray("⏱️  Faucet transactions can take 2-5 minutes to process.")
+      );
       console.log(chalk.gray("━".repeat(60)));
       console.log();
       console.log(chalk.yellow.bold("💡 Options while waiting:"));
-      console.log(chalk.white("   • ") + chalk.cyan("Let this script wait (it will auto-detect when funds arrive)"));
-      console.log(chalk.white("   • ") + chalk.cyan("OR press ") + chalk.yellow("Ctrl+C") + chalk.cyan(" to stop, then check balance with:"));
+      console.log(
+        chalk.white("   • ") +
+          chalk.cyan(
+            "Let this script wait (it will auto-detect when funds arrive)"
+          )
+      );
+      console.log(
+        chalk.white("   • ") +
+          chalk.cyan("OR press ") +
+          chalk.yellow("Ctrl+C") +
+          chalk.cyan(" to stop, then check balance with:")
+      );
       console.log(chalk.yellow.bold("     npm run check-balance"));
-      console.log(chalk.white("   • ") + chalk.cyan("Once funded, run: ") + chalk.yellow.bold("npm run deploy"));
+      console.log(
+        chalk.white("   • ") +
+          chalk.cyan("Once funded, run: ") +
+          chalk.yellow.bold("npm run deploy")
+      );
       console.log();
       console.log(chalk.blue("⏳ Waiting to receive tokens..."));
       balance = await waitForFunds(wallet);
     }
 
-    console.log(chalk.yellow.bold("💰 Balance: ") + chalk.green.bold(`${balance} DUST`));
+    console.log(
+      chalk.yellow.bold("💰 Balance: ") + chalk.green.bold(`${balance} DUST`)
+    );
     console.log();
 
     // Load compiled contract files
@@ -209,7 +234,9 @@ async function main() {
   } catch (error) {
     console.log();
     console.log(chalk.red.bold("❌ Deployment Failed:"));
-    console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+    console.error(
+      chalk.red(error instanceof Error ? error.message : String(error))
+    );
     console.log();
     process.exit(1);
   }
