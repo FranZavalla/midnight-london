@@ -2,11 +2,14 @@ pragma language_version >= 0.16 && <= 0.17;
 
 import CompactStandardLibrary;
 
+// Public state
 export ledger bettedNumbers: Map<Uint<32>, Uint<32>>; // (Number -> Amount of bets)
 export ledger winnerNumber: Uint<32>; // (Number)
 export ledger bets: Set<Bytes<32>>; // (<Address + Number> Hash)
 export ledger owner: ZswapCoinPublicKey;
 
+// Private State
+witness secretKey(): Bytes<32>; // Function implemented in typescript
 
 constructor() {
     owner = ownPublicKey();
@@ -15,16 +18,18 @@ constructor() {
 
 export circuit placeBet(number: Uint<32>, payment: CoinInfo): [] {
     if (winnerNumber == 0) {
-      const disclosedNumber = disclose(number);
-      const disclosedPayment = disclose(payment);
-      receive(disclosedPayment);
-      if (bettedNumbers.member(disclosedNumber)) {
-          const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
-          bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-      }
-      else {
-          bettedNumbers.insert(disclosedNumber, 1);
-      }
+        const disclosedNumber = disclose(number);
+        const disclosedPayment = disclose(payment);
+        receive(disclosedPayment);
+        if (bettedNumbers.member(disclosedNumber)) {
+            const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
+            bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
+            bets.insert(publicKey(disclose(secretKey()), disclosedNumber));
+        }
+        else {
+            bettedNumbers.insert(disclosedNumber, 1);
+            bets.insert(publicKey(disclose(secretKey()), disclosedNumber));
+        }
     }
 }
 
@@ -32,4 +37,9 @@ export circuit setWinner(number: Uint<32>): [] {
     const pk = ownPublicKey();
     assert(owner == pk, "Only owner can set the winner");
     winnerNumber = disclose(number);
+}
+
+circuit publicKey(sk: Bytes<32>, number: Uint<32>): Bytes<32> {
+    const hashedNumber: Bytes<32> = persistentHash<[Bytes<32>, Uint<32>]>([pad(32, "number-domain"), number]);
+    return persistentHash<Vector<3, Bytes<32>>>([pad(32, "commitment-domain"), sk, hashedNumber]);
 }
