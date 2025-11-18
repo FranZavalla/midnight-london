@@ -18,28 +18,26 @@ constructor() {
 }
 
 export circuit placeBet(number: Uint<32>, tokens: CoinInfo): [] {
-    // Use assert instead of if
-    if (winnerNumber == 0) {
-        const pk = ownPublicKey();
-        const disclosedNumber = disclose(number);
-        const disclosedPayment = disclose(tokens);
-        receive(disclosedPayment);
-        if (aggregatedPayment.size() == 0 ){
-            aggregatedPayment.insertCoin(0 as Uint<32>, disclosedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
-        }
-        const totalPayment = aggregatedPayment.lookup(0);
-        const mergedPayment = mergeCoinImmediate(totalPayment, disclosedPayment);
-        aggregatedPayment.remove(0);
-        aggregatedPayment.insertCoin(0 as Uint<32>, mergedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
-        if (bettedNumbers.member(disclosedNumber)) {
-            const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
-            bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-            bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
-        } else {
-            bettedNumbers.insert(disclosedNumber, 1);
-            bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
-          }
+    assert (winnerNumber == 0, "Lottery has already ended");
+    const pk = ownPublicKey();
+    const disclosedNumber = disclose(number);
+    const disclosedPayment = disclose(tokens);
+    receive(disclosedPayment);
+    if (aggregatedPayment.size() == 0 ){
+        aggregatedPayment.insertCoin(0 as Uint<32>, disclosedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
     }
+    const totalPayment = aggregatedPayment.lookup(0);
+    const mergedPayment = mergeCoinImmediate(totalPayment, disclosedPayment);
+    aggregatedPayment.remove(0);
+    aggregatedPayment.insertCoin(0 as Uint<32>, mergedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
+    if (bettedNumbers.member(disclosedNumber)) {
+        const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
+        bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
+        bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+    } else {
+        bettedNumbers.insert(disclosedNumber, 1);
+        bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+      }
 }
 
 export circuit setWinner(number: Uint<32>): [] {
