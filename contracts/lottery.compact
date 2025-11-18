@@ -10,18 +10,21 @@ export ledger owner: ZswapCoinPublicKey;
 
 constructor() {
     owner = ownPublicKey();
+    winnerNumber = 0;
 }
 
 export circuit placeBet(number: Uint<32>, payment: CoinInfo): [] {
-    const disclosedNumber = disclose(number);
-    const disclosedPayment = disclose(payment);
-    receive(disclosedPayment);
-    if (bettedNumbers.member(disclosedNumber)) {
-        const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
-        bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-    }
-    else {
-        bettedNumbers.insert(disclosedNumber, 1);
+    if (winnerNumber == 0) {
+      const disclosedNumber = disclose(number);
+      const disclosedPayment = disclose(payment);
+      receive(disclosedPayment);
+      if (bettedNumbers.member(disclosedNumber)) {
+          const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
+          bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
+      }
+      else {
+          bettedNumbers.insert(disclosedNumber, 1);
+      }
     }
 }
 
