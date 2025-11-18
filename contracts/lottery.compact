@@ -58,8 +58,3 @@ circuit resolveWinner(sk: Bytes<32>): [] {
     send(totalPrize, left<ZswapCoinPublicKey, ContractAddress>(pk), totalPrize.value);
   }
 }
-
-// circuit send
-//  (input: QualifiedCoinInfo,
-//   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-//   value: Uint<128>): SendResult;
