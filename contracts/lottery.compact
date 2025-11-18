@@ -51,7 +51,15 @@ circuit betEntry(sk: Bytes<32>, number: Uint<32>): Bytes<32> {
     return persistentHash<Vector<3, Bytes<32>>>([pad(32, "commitment-domain"), sk, hashedNumber]);
 }
 
+circuit resolveWinner(sk: Bytes<32>): [] {
+  const pk = ownPublicKey();
+  const totalPrize = aggregatedPayment.lookup(0);
+  if (bets.member(betEntry(sk, winnerNumber)) == true) {
+    send(totalPrize, left<ZswapCoinPublicKey, ContractAddress>(pk), totalPrize.value);
+  }
+}
+
 // circuit send
 //  (input: QualifiedCoinInfo,
-//   recipient: Either<ZswapCoinPublicKey,
-//   ContractAddress>, value: Uint<128>): SendResult;
+//   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+//   value: Uint<128>): SendResult;
