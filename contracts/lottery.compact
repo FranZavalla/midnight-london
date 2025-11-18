@@ -15,6 +15,9 @@ witness secretKey(): Bytes<32>; // Function implemented in typescript
 constructor() {
     owner = ownPublicKey();
     winnerNumber = 0;
+    bets.resetToDefault();
+    bettedNumbers.resetToDefault();
+    aggregatedPayment.resetToDefault();
 }
 
 export circuit placeBet(number: Uint<32>, tokens: CoinInfo, secretKey: Bytes<32>): [] {
@@ -23,13 +26,14 @@ export circuit placeBet(number: Uint<32>, tokens: CoinInfo, secretKey: Bytes<32>
     const disclosedNumber = disclose(number);
     const disclosedPayment = disclose(tokens);
     receive(disclosedPayment);
-    if (aggregatedPayment.size() == 0 ){
+    if (aggregatedPayment.size() == 0) {
         aggregatedPayment.insertCoin(0 as Uint<32>, disclosedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
+    } else {
+        const totalPayment = aggregatedPayment.lookup(0);
+        const mergedPayment = mergeCoinImmediate(totalPayment, disclosedPayment);
+        aggregatedPayment.remove(0);
+        aggregatedPayment.insertCoin(0 as Uint<32>, mergedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
     }
-    const totalPayment = aggregatedPayment.lookup(0);
-    const mergedPayment = mergeCoinImmediate(totalPayment, disclosedPayment);
-    aggregatedPayment.remove(0);
-    aggregatedPayment.insertCoin(0 as Uint<32>, mergedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
     if (bettedNumbers.member(disclosedNumber)) {
         const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
         bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
@@ -37,7 +41,7 @@ export circuit placeBet(number: Uint<32>, tokens: CoinInfo, secretKey: Bytes<32>
     } else {
         bettedNumbers.insert(disclosedNumber, 1);
         bets.insert(betEntry(disclose(secretKey), disclosedNumber));
-      }
+    }
 }
 
 export circuit setWinner(number: Uint<32>): [] {
@@ -51,10 +55,10 @@ circuit betEntry(sk: Bytes<32>, number: Uint<32>): Bytes<32> {
     return persistentHash<Vector<3, Bytes<32>>>([pad(32, "commitment-domain"), sk, hashedNumber]);
 }
 
-circuit resolveWinner(sk: Bytes<32>): [] {
+export circuit resolveWinner(sk: Bytes<32>): [] {
   const pk = ownPublicKey();
   const totalPrize = aggregatedPayment.lookup(0);
-  if (bets.member(betEntry(sk, winnerNumber)) == true) {
+  if (bets.member(betEntry(disclose(sk), winnerNumber)) == true) {
     send(totalPrize, left<ZswapCoinPublicKey, ContractAddress>(pk), totalPrize.value);
   }
 }
