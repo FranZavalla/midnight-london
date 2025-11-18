@@ -7,6 +7,7 @@ export ledger bettedNumbers: Map<Uint<32>, Uint<32>>; // (Number -> Amount of be
 export ledger winnerNumber: Uint<32>; // (Number)
 export ledger bets: Set<Bytes<32>>; // (<Address + Number> Hash)
 export ledger owner: ZswapCoinPublicKey;
+export ledger aggregatedPayment: Map<Uint<32>, QualifiedCoinInfo>;
 
 // Private State
 witness secretKey(): Bytes<32>; // Function implemented in typescript
@@ -16,20 +17,28 @@ constructor() {
     winnerNumber = 0;
 }
 
-export circuit placeBet(number: Uint<32>, payment: CoinInfo): [] {
+export circuit placeBet(number: Uint<32>, tokens: CoinInfo): [] {
+    // Use assert instead of if
     if (winnerNumber == 0) {
+        const pk = ownPublicKey();
         const disclosedNumber = disclose(number);
-        const disclosedPayment = disclose(payment);
+        const disclosedPayment = disclose(tokens);
         receive(disclosedPayment);
+        if (aggregatedPayment.size() == 0 ){
+            aggregatedPayment.insertCoin(0 as Uint<32>, disclosedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
+        }
+        const totalPayment = aggregatedPayment.lookup(0);
+        const mergedPayment = mergeCoinImmediate(totalPayment, disclosedPayment);
+        aggregatedPayment.remove(0);
+        aggregatedPayment.insertCoin(0 as Uint<32>, mergedPayment, left<ZswapCoinPublicKey, ContractAddress>(pk));
         if (bettedNumbers.member(disclosedNumber)) {
             const amount: Uint<32> = bettedNumbers.lookup(disclosedNumber);
             bettedNumbers.insert(disclosedNumber, amount + 1 as Uint<32>);
-            bets.insert(publicKey(disclose(secretKey()), disclosedNumber));
-        }
-        else {
+            bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+        } else {
             bettedNumbers.insert(disclosedNumber, 1);
-            bets.insert(publicKey(disclose(secretKey()), disclosedNumber));
-        }
+            bets.insert(betEntry(disclose(secretKey()), disclosedNumber));
+          }
     }
 }
 
@@ -39,7 +48,12 @@ export circuit setWinner(number: Uint<32>): [] {
     winnerNumber = disclose(number);
 }
 
-circuit publicKey(sk: Bytes<32>, number: Uint<32>): Bytes<32> {
+circuit betEntry(sk: Bytes<32>, number: Uint<32>): Bytes<32> {
     const hashedNumber: Bytes<32> = persistentHash<[Bytes<32>, Uint<32>]>([pad(32, "number-domain"), number]);
     return persistentHash<Vector<3, Bytes<32>>>([pad(32, "commitment-domain"), sk, hashedNumber]);
 }
+
+// circuit send
+//  (input: QualifiedCoinInfo,
+//   recipient: Either<ZswapCoinPublicKey,
+//   ContractAddress>, value: Uint<128>): SendResult;
